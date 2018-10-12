@@ -70,16 +70,15 @@ notifyUsersWarning = "%v, команда всё еще ждет стэндапы
 notifyDirectMessage = "Привет, <@%s>! У тебя пропущен срок по стэндапам в канале <#%s|%s>. Пожалуйста, напиши стэндап! Чем скорее тем лучше!"
 
 
-noWorklogs = "недостаточно ворклогов: %v часов, "
-noCommits = "нет коммитов, "
-noStandup = "не написал стэндап!"
+noWorklogs = " ворклоги: %v :angry: "
+noCommits = " коммиты: %v :shit: "
+noStandup = " стэндап :x: "
 
-hasWorklogs = "достаточно ворклогов: %v часов, "
-hasCommits = "число коммитов: %v, "
-hasStandup = "написал стэндап!"
+hasWorklogs = " ворклоги %v :muscle: "
+hasCommits = " коммиты: %v :tada: "
+hasStandup = " стэндап :heavy_check_mark: "
 
-isRook = "<@%v> вчера грачевал в #%v! (%v)\n"
-isRookMonday = "<@%v> грачевал в пятницу и все выходные в #%v! (%v)\n"
+isRook = "<@%v> в #%v"
 
 wrongUsernameError = "Кажется, вы допустили ошибку в имени пользователя. Пожалуйста, перепроверьте и попытайтесь еще раз!"
 
@@ -128,5 +127,7 @@ StandupHandleNoTodayPlansMentioned = "Всё вроде как есть, но ч
 StandupHandleUpdatedStandup = "Отредактировал стэндап! Всё отлично!"
 StandupHandleCreatedStandup = "Сохранил твой стэндап! Всё супер!"
 
+ErrorRooksReportWeekend = "Сегодня выходной! Следующий отчет в понедельник!"
 
-
+ReportHeaderMonday = "Отчёт за прошлую пятницу и выходные"    
+ReportHeader = "Отчет за вчерашний день" 

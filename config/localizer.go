@@ -43,7 +43,6 @@ type Translate struct {
 	HasCommits          string
 	HasStandup          string
 	IsRook              string
-	IsRookMonday        string
 	NotifyAllDone       string
 	NotifyNotAll        string
 	NotifyManagerNotAll string
@@ -131,6 +130,10 @@ type Translate struct {
 	StandupHandleNoTodayPlansMentioned    string
 	StandupHandleUpdatedStandup           string
 	StandupHandleCreatedStandup           string
+
+	ErrorRooksReportWeekend string
+	ReportHeaderMonday      string
+	ReportHeader            string
 }
 
 // GetTranslation sets translation files for config
@@ -195,7 +198,6 @@ func GetTranslation(lang string) (Translate, error) {
 		"userDidNotStandupInChannel", "userDidStandupInChannel",
 		"PMAssigned",
 		"PMRemoved",
-		"isRookMonday",
 		"wrongUsernameError",
 
 		"selectUsersToAdd",
@@ -236,6 +238,9 @@ func GetTranslation(lang string) (Translate, error) {
 		"StandupHandleNoTodayPlansMentioned",
 		"StandupHandleUpdatedStandup",
 		"StandupHandleCreatedStandup",
+		"ErrorRooksReportWeekend",
+		"ReportHeaderMonday",
+		"ReportHeader",
 	}
 
 	for _, t := range r {
@@ -277,7 +282,6 @@ func GetTranslation(lang string) (Translate, error) {
 		HasCommits:                   m["hasCommits"],
 		HasStandup:                   m["hasStandup"],
 		IsRook:                       m["isRook"],
-		IsRookMonday:                 m["isRookMonday"],
 		NotifyAllDone:                m["notifyAllDone"],
 		NotifyNotAll:                 m["notifyNotAll"],
 		NotifyManagerNotAll:          m["notifyManagerNotAll"],
@@ -360,6 +364,10 @@ func GetTranslation(lang string) (Translate, error) {
 		StandupHandleNoTodayPlansMentioned:    m["StandupHandleNoTodayPlansMentioned"],
 		StandupHandleUpdatedStandup:           m["StandupHandleUpdatedStandup"],
 		StandupHandleCreatedStandup:           m["StandupHandleCreatedStandup"],
+
+		ErrorRooksReportWeekend: m["ErrorRooksReportWeekend"],
+		ReportHeaderMonday:      m["ReportHeaderMonday"],
+		ReportHeader:            m["ReportHeader"],
 	}
 
 	return t, nil

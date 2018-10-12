@@ -35,7 +35,6 @@ type Slack struct {
 // NewSlack creates a new copy of slack handler
 func NewSlack(conf config.Config) (*Slack, error) {
 	m, err := storage.NewMySQL(conf)
-
 	if err != nil {
 		logrus.Errorf("slack: NewMySQL failed: %v\n", err)
 		return nil, err
@@ -113,12 +112,7 @@ func (s *Slack) handleMessage(msg *slack.MessageEvent, botUserID string) error {
 		if !strings.Contains(msg.Msg.Text, botUserID) && !strings.Contains(msg.Msg.Text, "#standup") && !strings.Contains(msg.Msg.Text, "#стэндап") {
 			return nil
 		}
-		// Maybe we should not check if a user is assigned as standuper...
-		// _, err := s.db.FindChannelMemberByUserID(msg.User, msg.Channel)
-		// if err != nil {
-		// 	return s.SendEphemeralMessage(msg.Channel, msg.User, s.Conf.Translate.StandupHandleUserNotAssigned)
-		// }
-		standupText, messageIsStandup, problem := s.analizeStandup(msg.Msg.Text)
+		messageIsStandup, problem := s.analizeStandup(msg.Msg.Text)
 		if problem != "" {
 			return s.SendEphemeralMessage(msg.Channel, msg.User, problem)
 		}
@@ -129,7 +123,7 @@ func (s *Slack) handleMessage(msg *slack.MessageEvent, botUserID string) error {
 			standup, err := s.db.CreateStandup(model.Standup{
 				ChannelID: msg.Channel,
 				UserID:    msg.User,
-				Comment:   standupText,
+				Comment:   msg.Msg.Text,
 				MessageTS: msg.Msg.Timestamp,
 			})
 			if err != nil {
@@ -150,7 +144,7 @@ func (s *Slack) handleMessage(msg *slack.MessageEvent, botUserID string) error {
 		}
 		standup, err := s.db.SelectStandupByMessageTS(msg.SubMessage.Timestamp)
 		if err != nil {
-			standupText, messageIsStandup, problem := s.analizeStandup(msg.SubMessage.Text)
+			messageIsStandup, problem := s.analizeStandup(msg.SubMessage.Text)
 			if problem != "" {
 				return s.SendEphemeralMessage(msg.Channel, msg.SubMessage.User, problem)
 			}
@@ -161,7 +155,7 @@ func (s *Slack) handleMessage(msg *slack.MessageEvent, botUserID string) error {
 				standup, err := s.db.CreateStandup(model.Standup{
 					ChannelID: msg.Channel,
 					UserID:    msg.SubMessage.User,
-					Comment:   standupText,
+					Comment:   msg.SubMessage.Text,
 					MessageTS: msg.SubMessage.Timestamp,
 				})
 				if err != nil {
@@ -178,12 +172,12 @@ func (s *Slack) handleMessage(msg *slack.MessageEvent, botUserID string) error {
 			}
 		}
 
-		text, messageIsStandup, problem := s.analizeStandup(msg.SubMessage.Text)
+		messageIsStandup, problem := s.analizeStandup(msg.SubMessage.Text)
 		if problem != "" {
 			return s.SendEphemeralMessage(msg.Channel, msg.SubMessage.User, problem)
 		}
 		if messageIsStandup {
-			standup.Comment = text
+			standup.Comment = msg.SubMessage.Text
 			_, err := s.db.UpdateStandup(standup)
 			if err != nil {
 				logrus.Errorf("UpdateStandup failed: %v", err)
@@ -208,45 +202,57 @@ func (s *Slack) handleMessage(msg *slack.MessageEvent, botUserID string) error {
 	return nil
 }
 
-func (s *Slack) analizeStandup(message string) (string, bool, string) {
+func (s *Slack) analizeStandup(message string) (bool, string) {
+	message = strings.ToLower(message)
 	mentionsProblem := false
-	problemKeys := []string{s.Conf.Translate.P1, s.Conf.Translate.P2, s.Conf.Translate.P3, s.Conf.Translate.P4}
+	problemKeys := []string{"problem", "difficul", "stuck", "question", "issue", "проблем", "трудност", "затрдуднени", "вопрос"}
 	for _, problem := range problemKeys {
 		if strings.Contains(message, problem) {
 			mentionsProblem = true
 		}
 	}
 	if !mentionsProblem {
-		return "", false, s.Conf.Translate.StandupHandleNoProblemsMentioned
+		return false, s.Conf.Translate.StandupHandleNoProblemsMentioned
 	}
 
 	mentionsYesterdayWork := false
-	yesterdayWorkKeys := []string{s.Conf.Translate.Y1, s.Conf.Translate.Y2, s.Conf.Translate.Y3, s.Conf.Translate.Y4}
+	yesterdayWorkKeys := []string{"yesterday", "friday", "completed", "вчера", "пятниц", "делал", "сделано"}
 	for _, work := range yesterdayWorkKeys {
 		if strings.Contains(message, work) {
 			mentionsYesterdayWork = true
 		}
 	}
 	if !mentionsYesterdayWork {
-		return "", false, s.Conf.Translate.StandupHandleNoYesterdayWorkMentioned
+		return false, s.Conf.Translate.StandupHandleNoYesterdayWorkMentioned
 	}
 
 	mentionsTodayPlans := false
-	todayPlansKeys := []string{s.Conf.Translate.T1, s.Conf.Translate.T2, s.Conf.Translate.T3}
+	todayPlansKeys := []string{"today", "going", "plan", "сегодня", "собираюсь", "план"}
 	for _, plan := range todayPlansKeys {
 		if strings.Contains(message, plan) {
 			mentionsTodayPlans = true
 		}
 	}
 	if !mentionsTodayPlans {
-		return "", false, s.Conf.Translate.StandupHandleNoTodayPlansMentioned
+		return false, s.Conf.Translate.StandupHandleNoTodayPlansMentioned
 	}
-	return strings.TrimSpace(message), true, ""
+	return true, ""
 }
 
 // SendMessage posts a message in a specified channel visible for everyone
 func (s *Slack) SendMessage(channel, message string) error {
 	_, _, err := s.api.PostMessage(channel, message, slack.PostMessageParameters{})
+	if err != nil {
+		logrus.Errorf("slack: PostMessage failed: %v\n", err)
+		return err
+	}
+	return err
+}
+
+func (s *Slack) SendReportMessage(channel, message string, attachments []slack.Attachment) error {
+	_, _, err := s.api.PostMessage(channel, message, slack.PostMessageParameters{
+		Attachments: attachments,
+	})
 	if err != nil {
 		logrus.Errorf("slack: PostMessage failed: %v\n", err)
 		return err
@@ -286,7 +292,10 @@ func (s *Slack) SendUserMessage(userID, message string) error {
 //UpdateUsersList updates users in workspace
 func (s *Slack) UpdateUsersList() {
 	logrus.Infof("UpdateUsersList start")
-	users, _ := s.api.GetUsers()
+	users, err := s.api.GetUsers()
+	if err != nil {
+		logrus.Errorf("GetUsers failed: %v", err)
+	}
 	for _, user := range users {
 		if user.IsBot || user.Name == "slackbot" {
 			continue
@@ -312,7 +321,6 @@ func (s *Slack) UpdateUsersList() {
 		if user.Deleted {
 			s.db.DeleteUser(u.ID)
 		}
-		continue
 	}
 }
 
