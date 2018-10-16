@@ -23,10 +23,14 @@ type Translate struct {
 	AccessDenied         string
 	DeleteUser           string
 	DeleteAdmin          string
+	DeletePM             string
 	ListNoStandupers     string
 	ListNoAdmins         string
 	ListStandupers       string
 	ListAdmins           string
+	ListNoPMs            string
+	ListPMs              string
+	UserIsNotPM          string
 
 	AddStandupTimeNoUsers      string
 	AddStandupTime             string
@@ -73,25 +77,11 @@ type Translate struct {
 	HelloManager    string
 	StandupAccepted string
 
-	P1 string
-	P2 string
-	P3 string
-	P4 string
-
-	Y1 string
-	Y2 string
-	Y3 string
-	Y4 string
-
-	T1 string
-	T2 string
-	T3 string
-
 	WrongUsernameError string
 
 	SelectUsersToAdd        string
 	SelectUsersToDelete     string
-	UserDoesNotStandup      string
+	CanNotFindMember        string
 	SelectUsersToAddAsAdmin string
 	NoSuchUserInWorkspace   string
 	UserNotAdmin            string
@@ -134,6 +124,12 @@ type Translate struct {
 	ErrorRooksReportWeekend string
 	ReportHeaderMonday      string
 	ReportHeader            string
+
+	AccessAtLeastPM           string
+	AccessAtLeastAdmin        string
+	AccessAtLeastSuperAdmin   string
+	AccessAtLeastAdminOrOwner string
+	AccessAtLeastPMOrOwner    string
 }
 
 // GetTranslation sets translation files for config
@@ -171,9 +167,6 @@ func GetTranslation(lang string) (Translate, error) {
 		"reportStandupFromUser", "reportIgnoredStandup", "reportShowChannel",
 		"reportCollectorDataUser",
 		"helloManager", "standupAccepted",
-		"p1", "p2", "p3", "p4",
-		"y1", "y2", "y3", "y4",
-		"t1", "t2", "t3",
 		"userExist",
 		"pmExists", "pmAdded",
 		"addUserNoStandupTime",
@@ -182,10 +175,13 @@ func GetTranslation(lang string) (Translate, error) {
 		"accessDenied",
 		"deleteUser",
 		"deleteAdmin",
+		"DeletePM",
 		"listNoStandupers",
 		"listNoAdmins",
 		"listStandupers",
 		"listAdmins",
+		"listNoPMs",
+		"listPMs",
 		"addStandupTimeNoUsers",
 		"addStandupTime",
 		"removeStandupTimeWithUsers",
@@ -202,7 +198,7 @@ func GetTranslation(lang string) (Translate, error) {
 
 		"selectUsersToAdd",
 		"selectUsersToDelete",
-		"userDoesNotStandup",
+		"CanNotFindMember",
 		"selectUsersToAddAsAdmin",
 		"noSuchUserInWorkspace",
 		"userNotAdmin",
@@ -241,6 +237,12 @@ func GetTranslation(lang string) (Translate, error) {
 		"ErrorRooksReportWeekend",
 		"ReportHeaderMonday",
 		"ReportHeader",
+		"UserIsNotPM",
+		"AccessAtLeastPM",
+		"AccessAtLeastAdmin",
+		"AccessAtLeastSuperAdmin",
+		"AccessAtLeastAdminOrOwner",
+		"AccessAtLeastPMOrOwner",
 	}
 
 	for _, t := range r {
@@ -263,10 +265,13 @@ func GetTranslation(lang string) (Translate, error) {
 
 		DeleteUser:       m["deleteUser"],
 		DeleteAdmin:      m["deleteAdmin"],
+		DeletePM:         m["DeletePM"],
 		ListNoStandupers: m["listNoStandupers"],
 		ListNoAdmins:     m["listNoAdmins"],
 		ListStandupers:   m["listStandupers"],
 		ListAdmins:       m["listAdmins"],
+		ListNoPMs:        m["listNoPMs"],
+		ListPMs:          m["listPMs"],
 
 		AddStandupTimeNoUsers:        m["addStandupTimeNoUsers"],
 		AddStandupTime:               m["addStandupTime"],
@@ -309,25 +314,11 @@ func GetTranslation(lang string) (Translate, error) {
 		PMAssigned:                   m["PMAssigned"],
 		PMRemoved:                    m["PMRemoved"],
 
-		P1: m["p1"],
-		P2: m["p2"],
-		P3: m["p3"],
-		P4: m["p4"],
-
-		Y1: m["y1"],
-		Y2: m["y2"],
-		Y3: m["y3"],
-		Y4: m["y4"],
-
-		T1: m["t1"],
-		T2: m["t2"],
-		T3: m["t3"],
-
 		WrongUsernameError: m["wrongUsernameError"],
 
 		SelectUsersToAdd:        m["selectUsersToAdd"],
 		SelectUsersToDelete:     m["selectUsersToDelete"],
-		UserDoesNotStandup:      m["userDoesNotStandup"],
+		CanNotFindMember:        m["CanNotFindMember"],
 		SelectUsersToAddAsAdmin: m["selectUsersToAddAsAdmin"],
 		NoSuchUserInWorkspace:   m["noSuchUserInWorkspace"],
 		UserNotAdmin:            m["userNotAdmin"],
@@ -368,6 +359,13 @@ func GetTranslation(lang string) (Translate, error) {
 		ErrorRooksReportWeekend: m["ErrorRooksReportWeekend"],
 		ReportHeaderMonday:      m["ReportHeaderMonday"],
 		ReportHeader:            m["ReportHeader"],
+		UserIsNotPM:             m["UserIsNotPM"],
+
+		AccessAtLeastPM:           m["AccessAtLeastPM"],
+		AccessAtLeastAdmin:        m["AccessAtLeastAdmin"],
+		AccessAtLeastSuperAdmin:   m["AccessAtLeastSuperAdmin"],
+		AccessAtLeastAdminOrOwner: m["AccessAtLeastAdminOrOwner"],
+		AccessAtLeastPMOrOwner:    m["AccessAtLeastPMOrOwner"],
 	}
 
 	return t, nil

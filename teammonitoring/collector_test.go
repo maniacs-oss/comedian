@@ -20,7 +20,7 @@ func TestTeamMonitoringIsOFF(t *testing.T) {
 	c.TeamMonitoringEnabled = false
 	slack, err := chat.NewSlack(c)
 	assert.NoError(t, err)
-	_, err = NewTeamMonitoring(c, slack)
+	_, err = NewTeamMonitoring(slack)
 	assert.Error(t, err)
 	assert.Equal(t, "team monitoring is disabled", err.Error())
 }
@@ -34,7 +34,7 @@ func TestTeamMonitoringOnWeekEnd(t *testing.T) {
 		fmt.Println("Warning: Team Monitoring servise is disabled")
 		return
 	}
-	tm, err := NewTeamMonitoring(c, slack)
+	tm, err := NewTeamMonitoring(slack)
 	assert.NoError(t, err)
 
 	d := time.Date(2018, 9, 16, 10, 0, 0, 0, time.UTC)
@@ -54,7 +54,7 @@ func TestTeamMonitoringOnMonday(t *testing.T) {
 		fmt.Println("Warning: Team Monitoring servise is disabled")
 		return
 	}
-	tm, err := NewTeamMonitoring(c, s)
+	tm, err := NewTeamMonitoring(s)
 	assert.NoError(t, err)
 
 	d := time.Date(2018, 9, 17, 10, 0, 0, 0, time.UTC)
@@ -74,7 +74,7 @@ func TestTeamMonitoringOnWeekDay(t *testing.T) {
 		fmt.Println("Warning: Team Monitoring servise is disabled")
 		return
 	}
-	tm, err := NewTeamMonitoring(c, slack)
+	tm, err := NewTeamMonitoring(slack)
 	assert.NoError(t, err)
 
 	d := time.Date(2018, 9, 17, 10, 0, 0, 0, time.UTC)
@@ -139,15 +139,23 @@ func TestGetCollectorData(t *testing.T) {
 		return
 	}
 
-	dataOnUser, err := GetCollectorData(c, "users", "UC1JNECA3", "2018-10-11", "2018-10-11")
+	dataOnUser, err := GetCollectorData(c, "users", "U851AU1U0", "2018-10-12", "2018-10-14")
 	assert.NoError(t, err)
 	fmt.Printf("Report on user: Total Commits: %v, Total Worklogs: %v\n\n", dataOnUser.TotalCommits, utils.SecondsToHuman(dataOnUser.Worklogs))
 
-	dataOnProject, err := GetCollectorData(c, "projects", "comedian-testing", "2018-10-11", "2018-10-11")
-	assert.NoError(t, err)
-	fmt.Printf("Report on project: Total Commits: %v, Total Worklogs: %v\n\n", dataOnProject.TotalCommits, utils.SecondsToHuman(dataOnProject.Worklogs))
+	// dataOnProject, err := GetCollectorData(c, "projects", "comedian-testing", "2018-10-11", "2018-10-11")
+	// assert.NoError(t, err)
+	// fmt.Printf("Report on project: Total Commits: %v, Total Worklogs: %v\n\n", dataOnProject.TotalCommits, utils.SecondsToHuman(dataOnProject.Worklogs))
 
-	dataOnUserByProject, err := GetCollectorData(c, "user-in-project", "UC1JNECA3/comedian-testing", "2018-10-11", "2018-10-11")
+	// dataOnUserByProject, err := GetCollectorData(c, "user-in-project", "UC1JNECA3/comedian-testing", "2018-10-11", "2018-10-11")
+	// assert.NoError(t, err)
+	// fmt.Printf("Report on user in project: Total Commits: %v, Total Worklogs: %v\n\n", dataOnUserByProject.TotalCommits, utils.SecondsToHuman(dataOnUserByProject.Worklogs))
+
+	dataOnUserByProject, err := GetCollectorData(c, "user-in-project", "UD6143K51/standups", "2018-10-12", "2018-10-14")
+	assert.NoError(t, err)
+	fmt.Printf("Report on user in project: Total Commits: %v, Total Worklogs: %v\n\n", dataOnUserByProject.TotalCommits, utils.SecondsToHuman(dataOnUserByProject.Worklogs))
+
+	dataOnUserByProject, err = GetCollectorData(c, "user-in-project", "UD6147Z4K/standups", "2018-10-12", "2018-10-14")
 	assert.NoError(t, err)
 	fmt.Printf("Report on user in project: Total Commits: %v, Total Worklogs: %v\n\n", dataOnUserByProject.TotalCommits, utils.SecondsToHuman(dataOnUserByProject.Worklogs))
 
