@@ -127,14 +127,31 @@ func (tm *TeamMonitoring) RevealRooks() ([]slack.Attachment, error) {
 		}
 
 		var worklogs, commits, standup string
+		var worklogsEmoji, worklogsTime string
 		var points int
 
-		if dataOnUser.Worklogs/3600 < 8 {
-			worklogs = fmt.Sprintf(tm.conf.Translate.NoWorklogs, utils.SecondsToHuman(dataOnUserInProject.Worklogs), utils.SecondsToHuman(dataOnUser.Worklogs))
-		} else {
-			worklogs = fmt.Sprintf(tm.conf.Translate.HasWorklogs, utils.SecondsToHuman(dataOnUserInProject.Worklogs), utils.SecondsToHuman(dataOnUser.Worklogs))
+		w := dataOnUser.Worklogs / 3600
+
+		switch {
+		case w < 3:
+			worklogsEmoji = ":angry:"
+		case w >= 3 && w < 7:
+			worklogsEmoji = ":disappointed:"
+		case w >= 7 && w < 9:
+			worklogsEmoji = ":wink:"
+			points++
+		case w >= 9:
+			worklogsEmoji = ":sunglasses:"
 			points++
 		}
+
+		worklogsTime = utils.SecondsToHuman(dataOnUser.Worklogs)
+
+		if dataOnUser.Worklogs != dataOnUserInProject.Worklogs {
+			worklogsTime = fmt.Sprintf(tm.conf.Translate.WorklogsTime, utils.SecondsToHuman(dataOnUserInProject.Worklogs), utils.SecondsToHuman(dataOnUser.Worklogs))
+		}
+		worklogs = fmt.Sprintf(tm.conf.Translate.Worklogs, worklogsTime, worklogsEmoji)
+
 		if dataOnUserInProject.TotalCommits == 0 {
 			commits = fmt.Sprintf(tm.conf.Translate.NoCommits, dataOnUserInProject.TotalCommits)
 		} else {
@@ -177,31 +194,25 @@ func GetCollectorData(conf config.Config, getDataOn, data, dateFrom, dateTo stri
 	logrus.Infof("teammonitoring: getCollectorData request URL: %s", linkURL)
 	req, err := http.NewRequest("GET", linkURL, nil)
 	if err != nil {
-		logrus.Errorf("teammonitoring: http.NewRequest failed: %v\n", err)
 		return collectorData, err
 	}
 	token := conf.CollectorToken
 	req.Header.Add("Authorization", fmt.Sprintf("Token %s", token))
 
 	res, err := http.DefaultClient.Do(req)
-	logrus.Infof("RESPONSE: %v", res)
 	if err != nil {
-		logrus.Errorf("teammonitoring: http.DefaultClient.Do(req) failed: %v\n", err)
 		return collectorData, err
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode != 200 {
-		logrus.Errorf("teammonitoring: get collector data failed! Status Code: %v\n", res.StatusCode)
 		return collectorData, errors.New("could not get data on this request")
 	}
 
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		logrus.Errorf("teammonitoring: ioutil.ReadAll(res.Body) failed: %v\n", err)
 		return collectorData, err
 	}
-
 	json.Unmarshal(body, &collectorData)
 
 	return collectorData, nil
