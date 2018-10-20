@@ -618,6 +618,8 @@ func TestPMCommand(t *testing.T) {
 	NoUsersToAdd := "user_id=UB9AE7CL9&command=/pm_add&channel_id=123qwe&channel_name=channel1&text="
 	MisspelledUserName := "user_id=UB9AE7CL9&command=/pm_add&channel_id=123qwe&channel_name=channel1&text=@user1"
 	NoChannelIDSet := "user_id=UB9AE7CL9&command=/pm_add&channel_id=&channel_name=channel1&text=<@User1|userID1>"
+	ListPM := "user_id=UB9AE7CL9&command=/pm_list&channel_id=123qwe&channel_name=chanName"
+	DeletePM := "user_id=UB9AE7CL9&command=/pm_remove&channel_id=123qwe&channel_name=chanName&text=<@User1|userID1>"
 
 	c, err := config.Get()
 	c.ManagerSlackUserID = "UB9AE7CL9"
@@ -652,6 +654,9 @@ func TestPMCommand(t *testing.T) {
 		statusCode   int
 		responseBody string
 	}{
+		{"Add PM", AddPM, http.StatusOK, "<@User1> is assigned as PM in this channel"},
+		{"List PM", ListPM, http.StatusOK, "PMs in this channel: <@User1>"},
+		{"Delete PM", DeletePM, http.StatusOK, "User <@User1> is not PM in this channel\n"},
 		{"Add PM", AddPM, http.StatusOK, "<@User1> is assigned as PM in this channel"},
 		{"Add PM No Access", AddPMNoAccess, http.StatusOK, "Access Denied! You need to be at least admin in this slack to use this command!"},
 		{"No Users To Add", NoUsersToAdd, http.StatusOK, "Seems like you misspelled username. Please, check and try command again!"},
@@ -810,3 +815,34 @@ func TestUserHasAccess(t *testing.T) {
 	assert.NoError(t, r.db.DeleteChannelMember(pmUser.UserID, "RANDOMCHAN"))
 
 }
+
+// new test cases
+// testCases := []struct {
+// 	senderID     string
+// 	channelID    string
+// 	channelTitle string
+// 	command      string
+// 	commandText  string
+// 	response     string
+// }{
+// 	{"SuperAdminID", "TestChannelID", "TestChannel", "comedian_list", "", "No standupers in this channel! To add one, please, use `/comedian_add` slash command"},
+// }
+
+// for i, tt := range testCases {
+// 	request := fmt.Sprintf("user_id=%s&channel_id=%s&channel_name=%s&command=/%s&text=%s",
+// 		tt.senderID,
+// 		tt.channelID,
+// 		tt.channelTitle,
+// 		tt.command,
+// 		tt.commandText,
+// 	)
+// 	context, response := getContext(request)
+// 	err := rest.handleCommands(context)
+// 	if err != nil {
+// 		logrus.Errorf("TestHandleUserCommands: %v case failed. Error: %v\n", i, err)
+// 	}
+// 	if tt.response != response.Body.String() {
+// 		logrus.Errorf("Test case %v failed!\nExpected:'%v'\nActual:'%v'", i, tt.response, response.Body.String())
+// 		return
+// 	}
+// }
