@@ -113,6 +113,7 @@ type Translate struct {
 	ErrorRooksReportWeekend string
 	ReportHeaderMonday      string
 	ReportHeader            string
+	ReportHeaderWeekly      string
 
 	AccessAtLeastPM           string
 	AccessAtLeastAdmin        string
@@ -131,8 +132,9 @@ type Translate struct {
 	AddAdminsExist      string
 	AddAdminsAdded      string
 
-	SomethingWentWrong string
-	HelpCommand        string
+	SomethingWentWrong   string
+	HelpCommand          string
+	EmptyReportForSunday string
 }
 
 // GetTranslation sets translation files for config
@@ -231,6 +233,7 @@ func GetTranslation(lang string) (Translate, error) {
 		"ErrorRooksReportWeekend",
 		"ReportHeaderMonday",
 		"ReportHeader",
+		"ReportHeaderWeekly",
 		"UserIsNotPM",
 		"AccessAtLeastPM",
 		"AccessAtLeastAdmin",
@@ -249,6 +252,7 @@ func GetTranslation(lang string) (Translate, error) {
 		"AddAdminsAdded",
 		"SomethingWentWrong",
 		"HelpCommand",
+		"EmptyReportForSunday",
 	}
 
 	for _, t := range r {
@@ -367,6 +371,7 @@ func GetTranslation(lang string) (Translate, error) {
 		ErrorRooksReportWeekend: m["ErrorRooksReportWeekend"],
 		ReportHeaderMonday:      m["ReportHeaderMonday"],
 		ReportHeader:            m["ReportHeader"],
+		ReportHeaderWeekly:      m["ReportHeaderWeekly"],
 
 		AccessAtLeastPM:           m["AccessAtLeastPM"],
 		AccessAtLeastAdmin:        m["AccessAtLeastAdmin"],
@@ -374,9 +379,10 @@ func GetTranslation(lang string) (Translate, error) {
 		AccessAtLeastAdminOrOwner: m["AccessAtLeastAdminOrOwner"],
 		AccessAtLeastPMOrOwner:    m["AccessAtLeastPMOrOwner"],
 
-		NeedCorrectUserRole: m["NeedCorrectUserRole"],
-		SomethingWentWrong:  m["SomethingWentWrong"],
-		HelpCommand:         m["HelpCommand"],
+		NeedCorrectUserRole:  m["NeedCorrectUserRole"],
+		SomethingWentWrong:   m["SomethingWentWrong"],
+		HelpCommand:          m["HelpCommand"],
+		EmptyReportForSunday: m["EmptyReportForSunday"],
 	}
 
 	return t, nil
