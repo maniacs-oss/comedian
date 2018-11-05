@@ -6,8 +6,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	"github.com/cenkalti/backoff"
 	"github.com/maddevsio/comedian/model"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
+	"golang.org/x/text/language"
 
 	"github.com/maddevsio/comedian/chat"
 	"github.com/maddevsio/comedian/config"
@@ -17,14 +20,19 @@ import (
 
 // Notifier struct is used to notify users about upcoming or skipped standups
 type Notifier struct {
-	s    *chat.Slack
-	db   storage.Storage
-	conf config.Config
+	s         *chat.Slack
+	db        storage.Storage
+	conf      config.Config
+	Localizer *i18n.Localizer
 }
 
 // NewNotifier creates a new notifier
 func NewNotifier(slack *chat.Slack) (*Notifier, error) {
-	notifier := &Notifier{s: slack, db: slack.DB, conf: slack.Conf}
+	bundle := &i18n.Bundle{DefaultLanguage: language.English}
+	bundle.RegisterUnmarshalFunc("toml", toml.Unmarshal)
+	bundle.MustLoadMessageFile("active.ru.toml")
+	localizer := i18n.NewLocalizer(bundle, "ru")
+	notifier := &Notifier{s: slack, db: slack.DB, conf: slack.Conf, Localizer: localizer}
 	return notifier, nil
 }
 
@@ -107,10 +115,39 @@ func (n *Notifier) SendWarning(channelID string) {
 		return
 	}
 	nonReportersIDs := []string{}
+	fmt.Println(len(nonReporters))
 	for _, user := range nonReporters {
 		nonReportersIDs = append(nonReportersIDs, "<@"+user.UserID+">")
 	}
-	err = n.s.SendMessage(channelID, fmt.Sprintf(n.conf.Translate.NotifyUsersWarning, strings.Join(nonReportersIDs, ", "), n.conf.ReminderTime), nil)
+
+	minutes := n.Localizer.MustLocalize(&i18n.LocalizeConfig{
+		DefaultMessage: &i18n.Message{
+			ID:          "Minutes",
+			Description: "Translate minutes differently",
+			One:         "{{.time}} minute",
+			Other:       "{{.time}} minutes",
+		},
+		PluralCount: n.conf.ReminderTime,
+		TemplateData: map[string]interface{}{
+			"time": n.conf.ReminderTime,
+		},
+	})
+
+	warnNonReporters := n.Localizer.MustLocalize(&i18n.LocalizeConfig{
+		DefaultMessage: &i18n.Message{
+			ID:          "WarnNonReporters",
+			Description: "Warning message to those who did not submit standup",
+			One:         "Hey, {{.user}}! {{.minutes}} to deadline and you are the only one who still did not submit standup! Brace yourselve!",
+			Other:       "Hey, {{.users}}! {{.minutes}} to deadline and you people still did not submit standups! Go ahead!",
+		},
+		PluralCount: len(nonReporters),
+		TemplateData: map[string]interface{}{
+			"user":    nonReportersIDs[0],
+			"users":   strings.Join(nonReportersIDs, ", "),
+			"minutes": minutes,
+		},
+	})
+	err = n.s.SendMessage(channelID, warnNonReporters, nil)
 	if err != nil {
 		logrus.Errorf("notifier: n.s.SendMessage failed: %v\n", err)
 		return

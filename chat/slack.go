@@ -6,12 +6,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	"github.com/jasonlvhit/gocron"
 	"github.com/maddevsio/comedian/config"
 	"github.com/maddevsio/comedian/model"
 	"github.com/maddevsio/comedian/storage"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"github.com/nlopes/slack"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/text/language"
 
 	"strings"
 )
@@ -24,15 +27,20 @@ var (
 
 // Slack struct used for storing and communicating with slack api
 type Slack struct {
-	API  *slack.Client
-	RTM  *slack.RTM
-	WG   sync.WaitGroup
-	DB   *storage.MySQL
-	Conf config.Config
+	API       *slack.Client
+	RTM       *slack.RTM
+	WG        sync.WaitGroup
+	DB        *storage.MySQL
+	Conf      config.Config
+	Localizer *i18n.Localizer
 }
 
 // NewSlack creates a new copy of slack handler
 func NewSlack(conf config.Config) (*Slack, error) {
+	bundle := &i18n.Bundle{DefaultLanguage: language.English}
+	bundle.RegisterUnmarshalFunc("toml", toml.Unmarshal)
+	bundle.MustLoadMessageFile("active.ru.toml")
+	localizer := i18n.NewLocalizer(bundle, conf.Language)
 	db, err := storage.NewMySQL(conf)
 	if err != nil {
 		logrus.Errorf("slack: NewMySQL failed: %v\n", err)
@@ -44,6 +52,7 @@ func NewSlack(conf config.Config) (*Slack, error) {
 	s.API = slack.New(conf.SlackToken)
 	s.RTM = s.API.NewRTM()
 	s.DB = db
+	s.Localizer = localizer
 	return s, nil
 }
 
@@ -51,7 +60,17 @@ func NewSlack(conf config.Config) (*Slack, error) {
 func (s *Slack) Run() {
 
 	s.UpdateUsersList()
-	s.SendUserMessage(s.Conf.ManagerSlackUserID, s.Conf.Translate.HelloManager)
+	helloManager := s.Localizer.MustLocalize(&i18n.LocalizeConfig{
+		DefaultMessage: &i18n.Message{
+			ID:          "HelloManager",
+			Description: "Greeting message once bot starts working",
+			Other:       "Hello <@{{.ID}}>",
+		},
+		TemplateData: map[string]string{
+			"ID": s.Conf.ManagerSlackUserID,
+		},
+	})
+	s.SendUserMessage(s.Conf.ManagerSlackUserID, helloManager)
 
 	gocron.Every(1).Day().At("23:50").Do(s.FillStandupsForNonReporters)
 	gocron.Every(1).Day().At("23:55").Do(s.UpdateUsersList)
@@ -96,6 +115,37 @@ func (s *Slack) handleJoin(channelID string) {
 }
 
 func (s *Slack) handleMessage(msg *slack.MessageEvent, botUserID string) {
+	standupCreated := s.Localizer.MustLocalize(&i18n.LocalizeConfig{
+		DefaultMessage: &i18n.Message{
+			ID:    "StandupCreated",
+			Other: "<@{{.ID}}>, your standup saved! Well done!",
+		},
+		TemplateData: map[string]string{
+			"ID": msg.User,
+		},
+	})
+
+	oneStandupPerDay := s.Localizer.MustLocalize(&i18n.LocalizeConfig{
+		DefaultMessage: &i18n.Message{
+			ID:          "OneStandupPerDay",
+			Description: "Warning that only one standup per day is allowed",
+			Other:       "<@{{.ID}}>, you can submit only one standup per day. Please, edit today's standup or submit your next standup tomorrow!",
+		},
+		TemplateData: map[string]string{
+			"ID": msg.User,
+		},
+	})
+
+	couldNotSaveStandup := s.Localizer.MustLocalize(&i18n.LocalizeConfig{
+		DefaultMessage: &i18n.Message{
+			ID:    "CouldNotSaveStandup",
+			Other: "<@{{.ID}}>, something went wrong and I could not save your standup in database. Please, report this to your PM.",
+		},
+		TemplateData: map[string]string{
+			"ID": msg.User,
+		},
+	})
+
 	switch msg.SubType {
 	case typeMessage:
 		if !strings.Contains(msg.Msg.Text, botUserID) && !strings.Contains(msg.Msg.Text, "#standup") {
@@ -108,7 +158,8 @@ func (s *Slack) handleMessage(msg *slack.MessageEvent, botUserID string) {
 		}
 		if messageIsStandup {
 			if s.DB.SubmittedStandupToday(msg.User, msg.Channel) {
-				s.SendEphemeralMessage(msg.Channel, msg.User, s.Conf.Translate.StandupHandleOneDayOneStandup)
+
+				s.SendEphemeralMessage(msg.Channel, msg.User, oneStandupPerDay)
 				return
 			}
 			standup, err := s.DB.CreateStandup(model.Standup{
@@ -121,14 +172,14 @@ func (s *Slack) handleMessage(msg *slack.MessageEvent, botUserID string) {
 				logrus.Errorf("CreateStandup failed: %v", err)
 				errorReportToManager := fmt.Sprintf("I could not save standup for user %s in channel %s because of the following reasons: %v", msg.User, msg.Channel, err)
 				s.SendUserMessage(s.Conf.ManagerSlackUserID, errorReportToManager)
-				s.SendEphemeralMessage(msg.Channel, msg.User, s.Conf.Translate.StandupHandleCouldNotSaveStandup)
+				s.SendEphemeralMessage(msg.Channel, msg.User, couldNotSaveStandup)
 				return
 			}
 			logrus.Infof("Standup created #id:%v\n", standup.ID)
 			item := slack.ItemRef{msg.Channel, msg.Msg.Timestamp, "", ""}
 			time.Sleep(2 * time.Second)
 			s.API.AddReaction("heavy_check_mark", item)
-			s.SendEphemeralMessage(msg.Channel, msg.User, s.Conf.Translate.StandupHandleCreatedStandup)
+			s.SendEphemeralMessage(msg.Channel, msg.User, standupCreated)
 			return
 		}
 	case typeEditMessage:
@@ -144,7 +195,7 @@ func (s *Slack) handleMessage(msg *slack.MessageEvent, botUserID string) {
 			}
 			if messageIsStandup {
 				if s.DB.SubmittedStandupToday(msg.SubMessage.User, msg.Channel) {
-					s.SendEphemeralMessage(msg.Channel, msg.SubMessage.User, s.Conf.Translate.StandupHandleOneDayOneStandup)
+					s.SendEphemeralMessage(msg.Channel, msg.SubMessage.User, oneStandupPerDay)
 					return
 				}
 				logrus.Infof("CreateStandup while updating text ChannelID (%v), UserID (%v), Comment (%v), TimeStamp (%v)", msg.Channel, msg.SubMessage.User, msg.SubMessage.Text, msg.SubMessage.Timestamp)
@@ -158,14 +209,14 @@ func (s *Slack) handleMessage(msg *slack.MessageEvent, botUserID string) {
 					logrus.Errorf("CreateStandup while updating text failed: %v", err)
 					errorReportToManager := fmt.Sprintf("I could not create standup while updating msg for user %s in channel %s because of the following reasons: %v", msg.SubMessage.User, msg.Channel, err)
 					s.SendUserMessage(s.Conf.ManagerSlackUserID, errorReportToManager)
-					s.SendEphemeralMessage(msg.Channel, msg.SubMessage.User, s.Conf.Translate.StandupHandleCouldNotSaveStandup)
+					s.SendEphemeralMessage(msg.Channel, msg.SubMessage.User, couldNotSaveStandup)
 					return
 				}
 				logrus.Infof("Standup created #id:%v\n", standup.ID)
 				item := slack.ItemRef{msg.Channel, msg.SubMessage.Timestamp, "", ""}
 				time.Sleep(2 * time.Second)
 				s.API.AddReaction("heavy_check_mark", item)
-				s.SendEphemeralMessage(msg.Channel, msg.SubMessage.User, s.Conf.Translate.StandupHandleCreatedStandup)
+				s.SendEphemeralMessage(msg.Channel, msg.SubMessage.User, standupCreated)
 				return
 			}
 		}
@@ -180,7 +231,16 @@ func (s *Slack) handleMessage(msg *slack.MessageEvent, botUserID string) {
 			st, _ := s.DB.UpdateStandup(standup)
 			logrus.Infof("Standup updated #id:%v\n", st.ID)
 			time.Sleep(2 * time.Second)
-			s.SendEphemeralMessage(msg.Channel, msg.SubMessage.User, s.Conf.Translate.StandupHandleUpdatedStandup)
+			standupUpdated := s.Localizer.MustLocalize(&i18n.LocalizeConfig{
+				DefaultMessage: &i18n.Message{
+					ID:    "StandupUpdated",
+					Other: "<@{{.ID}}>, your standup updated! Thanks!",
+				},
+				TemplateData: map[string]string{
+					"ID": msg.User,
+				},
+			})
+			s.SendEphemeralMessage(msg.Channel, msg.SubMessage.User, standupUpdated)
 			return
 		}
 
@@ -195,6 +255,25 @@ func (s *Slack) handleMessage(msg *slack.MessageEvent, botUserID string) {
 }
 
 func (s *Slack) analizeStandup(message string) (bool, string) {
+	noProblems := s.Localizer.MustLocalize(&i18n.LocalizeConfig{
+		DefaultMessage: &i18n.Message{
+			ID:    "NoProblemKeysDetected",
+			Other: "No 'problems' related keywords detected! Please, use one of the following: 'problem', 'difficult', 'stuck', 'question', 'issue'",
+		},
+	})
+
+	noYesterdayWork := s.Localizer.MustLocalize(&i18n.LocalizeConfig{
+		DefaultMessage: &i18n.Message{
+			ID:    "NoYesterdayWorkKeysDetected",
+			Other: "No 'yesterday' related keywords detected! Please, use one of the following: 'yesterday', 'friday', 'completed'",
+		},
+	})
+	noTodayPlans := s.Localizer.MustLocalize(&i18n.LocalizeConfig{
+		DefaultMessage: &i18n.Message{
+			ID:    "NoTodayPlansKeysDetected",
+			Other: "No 'today' related keywords detected! Please, use one of the following: 'today', 'going', 'plan'",
+		},
+	})
 	message = strings.ToLower(message)
 	mentionsProblem := false
 	problemKeys := []string{"problem", "difficult", "stuck", "question", "issue", "block", "проблем", "трудност", "затрдуднени", "вопрос"}
@@ -204,7 +283,7 @@ func (s *Slack) analizeStandup(message string) (bool, string) {
 		}
 	}
 	if !mentionsProblem {
-		return false, s.Conf.Translate.StandupHandleNoProblemsMentioned
+		return false, noProblems
 	}
 
 	mentionsYesterdayWork := false
@@ -215,7 +294,7 @@ func (s *Slack) analizeStandup(message string) (bool, string) {
 		}
 	}
 	if !mentionsYesterdayWork {
-		return false, s.Conf.Translate.StandupHandleNoYesterdayWorkMentioned
+		return false, noYesterdayWork
 	}
 
 	mentionsTodayPlans := false
@@ -226,7 +305,7 @@ func (s *Slack) analizeStandup(message string) (bool, string) {
 		}
 	}
 	if !mentionsTodayPlans {
-		return false, s.Conf.Translate.StandupHandleNoTodayPlansMentioned
+		return false, noTodayPlans
 	}
 	return true, ""
 }

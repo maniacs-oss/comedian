@@ -1,0 +1,24 @@
+CouldNotSaveStandup = "<@{{.ID}}>, something went wrong and I could not save your standup in database. Please, report this to your PM."
+NoProblemKeysDetected = "No 'problems' related keywords detected! Please, use one of the following: 'problem', 'difficult', 'stuck', 'question', 'issue'"
+NoTodayPlansKeysDetected = "No 'today' related keywords detected! Please, use one of the following: 'today', 'going', 'plan'"
+NoYesterdayWorkKeysDetected = "No 'yesterday' related keywords detected! Please, use one of the following: 'yesterday', 'friday', 'completed'"
+StandupCreated = "<@{{.ID}}>, your standup saved! Well done!"
+StandupUpdated = "<@{{.ID}}>, your standup updated! Thanks!"
+
+[HelloManager]
+description = "Greeting message once bot starts working"
+other = "Hello <@{{.ID}}>"
+
+[Minutes]
+description = "Translate minutes differently"
+one = "{{.time}} minute"
+other = "{{.time}} minutes"
+
+[OneStandupPerDay]
+description = "Warning that only one standup per day is allowed"
+other = "<@{{.ID}}>, you can submit only one standup per day. Please, edit today's standup or submit your next standup tomorrow!"
+
+[WarnNonReporters]
+description = "Warning message to those who did not submit standup"
+one = "Hey, {{.user}}! {{.minutes}} to deadline and you are the only one who still did not submit standup! Brace yourselve!"
+other = "Hey, {{.users}}! {{.minutes}} to deadline and you people still did not submit standups! Go ahead!"

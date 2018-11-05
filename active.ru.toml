@@ -1,0 +1,29 @@
+CouldNotSaveStandup = "<@{{.ID}}>, что-то пошло не так и я не смог сохранить твой стендап. Пожалуйста, сообщи об этом ПМу или попробуй еще раз через некоторое время"
+NoProblemKeysDetected = "Не распознал ключевых слов блока 'проблемы'. Используйте следующие слова в стэндапе: 'проблем', 'трудност', 'затруднени', 'вопрос'"
+NoTodayPlansKeysDetected = "Не распознал ключевых слов блока 'сегодня'. Используйте следующие слова в стэндапе: 'сегодня', 'собираюсь', 'план'"
+NoYesterdayWorkKeysDetected = "Не распознал ключевых слов блока 'вчера'. Используйте следующие слова в стэндапе: 'вчера', 'пятниц', 'делал', 'сделано'"
+StandupCreated = "<@{{.ID}}>, стендап сохранил! Отличная работа!"
+StandupUpdated = "<@{{.ID}}>, стендап отредактировал, спасибо!"
+
+[HelloManager]
+description = "Greeting message once bot starts working"
+other = "Привет, <@{{.ID}}>"
+
+[Minutes]
+description = "Translate minutes differently"
+zero = "{{.time}} минут"
+one = "{{.time}} минута"
+few = "{{.time}} минуты"
+many = "{{.time}} минут"
+other = "{{.time}} минут"
+
+[OneStandupPerDay]
+description = "Warning that only one standup per day is allowed"
+other = "<@{{.ID}}>, you can submit only one standup per day. Please, edit today's standup or submit your next standup tomorrow!"
+
+[WarnNonReporters]
+description = "Warning message to those who did not submit standup"
+one = "Эй, {{.user}}! До дедлайна осталось {{.minutes}}, а команда ждет стендапа только от тебя! Соберись!"
+few = "{{.users}}, друзья! {{.minutes}} до дедлайна, а вы всё еще не написали стендапы. Ай яй яяяй!"
+many = "{{.users}}, друзья! {{.minutes}} до дедлайна, а вы всё еще не написали стендапы. Ай яй яяяй!"
+other = "{{.users}}, друзья! {{.minutes}} до дедлайна, а вы всё еще не написали стендапы. Ай яй яяяй!"
