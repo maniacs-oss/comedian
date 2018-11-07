@@ -31,7 +31,7 @@ func NewNotifier(slack *chat.Slack) (*Notifier, error) {
 	bundle := &i18n.Bundle{DefaultLanguage: language.English}
 	bundle.RegisterUnmarshalFunc("toml", toml.Unmarshal)
 	bundle.MustLoadMessageFile("active.ru.toml")
-	localizer := i18n.NewLocalizer(bundle, "ru")
+	localizer := i18n.NewLocalizer(bundle, slack.Conf.Language)
 	notifier := &Notifier{s: slack, db: slack.DB, conf: slack.Conf, Localizer: localizer}
 	return notifier, nil
 }
@@ -163,7 +163,31 @@ func (n *Notifier) SendIndividualWarning(channelMemberID int64) {
 	}
 	submittedStandup := n.db.SubmittedStandupToday(chm.UserID, chm.ChannelID)
 	if !submittedStandup {
-		err = n.s.SendMessage(chm.ChannelID, fmt.Sprintf(n.conf.Translate.IndividualStandupersWarning, chm.UserID, n.conf.ReminderTime), nil)
+		minutes := n.Localizer.MustLocalize(&i18n.LocalizeConfig{
+			DefaultMessage: &i18n.Message{
+				ID:          "Minutes",
+				Description: "Translate minutes differently",
+				One:         "{{.time}} minute",
+				Other:       "{{.time}} minutes",
+			},
+			PluralCount: n.conf.ReminderTime,
+			TemplateData: map[string]interface{}{
+				"time": n.conf.ReminderTime,
+			},
+		})
+
+		warnIndividualNonReporters := n.Localizer.MustLocalize(&i18n.LocalizeConfig{
+			DefaultMessage: &i18n.Message{
+				ID:          "WarnIndividualNonReporters",
+				Description: "Warning message to those who did not submit standup",
+				Other:       "Hey, {{.users}}! {{.minutes}} to deadline and you still did not submit standup! Hurry up!",
+			},
+			TemplateData: map[string]interface{}{
+				"user":    chm.UserID,
+				"minutes": minutes,
+			},
+		})
+		err = n.s.SendMessage(chm.ChannelID, warnIndividualNonReporters, nil)
 		if err != nil {
 			logrus.Errorf("notifier: n.s.SendMessage failed: %v\n", err)
 			return
@@ -197,7 +221,14 @@ func (n *Notifier) SendChannelNotification(channelID string) {
 		}
 	}
 	if len(nonReporters) == 0 {
-		err := n.s.SendMessage(channelID, n.conf.Translate.NotifyAllDone, nil)
+		allDone := n.Localizer.MustLocalize(&i18n.LocalizeConfig{
+			DefaultMessage: &i18n.Message{
+				ID:          "AllDone",
+				Description: "Message about all successfully submitted standups",
+				Other:       "Congradulations! Nobody missed the deadline! Well done!",
+			},
+		})
+		err := n.s.SendMessage(channelID, allDone, nil)
 		if err != nil {
 			logrus.Errorf("notifier: s.SendMessage failed: %v\n", err)
 		}
@@ -212,7 +243,20 @@ func (n *Notifier) SendChannelNotification(channelID string) {
 
 	// othervise Direct Message non reporters
 	for _, nonReporter := range nonReporters {
-		err := n.s.SendUserMessage(nonReporter.UserID, fmt.Sprintf(n.conf.Translate.NotifyDirectMessage, nonReporter.UserID, channel.ChannelID, channel.ChannelName))
+		directMessage := n.Localizer.MustLocalize(&i18n.LocalizeConfig{
+			DefaultMessage: &i18n.Message{
+				ID:          "DirectMessage",
+				Description: "DM Warning message to those who did not submit standup",
+				Other:       "Hey, <@{{.user}}>! you failed to submit standup in <#{{.channelID}}|{{.channelName}}> on time! Do it ASAP!",
+			},
+			PluralCount: len(nonReporters),
+			TemplateData: map[string]interface{}{
+				"user":        nonReporter.UserID,
+				"channelID":   channel.ChannelID,
+				"channelName": channel.ChannelName,
+			},
+		})
+		err := n.s.SendUserMessage(nonReporter.UserID, directMessage)
 		if err != nil {
 			logrus.Errorf("notifier: s.SendMessage failed: %v\n", err)
 		}
@@ -241,7 +285,20 @@ func (n *Notifier) SendChannelNotification(channelID string) {
 		logrus.Infof("notifier: Notifier non reporters: %v", nonReporters)
 
 		if repeats < n.conf.ReminderRepeatsMax && len(nonReporters) > 0 {
-			n.s.SendMessage(channelID, fmt.Sprintf(n.conf.Translate.NotifyNotAll, strings.Join(nonReportersSlackIDs, ", ")), nil)
+			tagNonReporters := n.Localizer.MustLocalize(&i18n.LocalizeConfig{
+				DefaultMessage: &i18n.Message{
+					ID:          "TagNonReporters",
+					Description: "Display message about those who did not submit standup",
+					One:         "Hey, {{.user}}! You missed deadline and you are the only one who still did not submit standup! Get it done!",
+					Other:       "Hey, {{.users}}! You all missed deadline and still did not submit standups! Time management problems detected!",
+				},
+				PluralCount: len(nonReporters),
+				TemplateData: map[string]interface{}{
+					"user":  nonReportersSlackIDs[0],
+					"users": strings.Join(nonReportersSlackIDs, ", "),
+				},
+			})
+			n.s.SendMessage(channelID, tagNonReporters, nil)
 			repeats++
 			err := errors.New("Continue backoff")
 			return err
@@ -271,7 +328,19 @@ func (n *Notifier) SendIndividualNotification(channelMemberID int64) {
 	}
 	submittedStandup := n.db.SubmittedStandupToday(chm.UserID, chm.ChannelID)
 	if !submittedStandup {
-		err := n.s.SendUserMessage(chm.UserID, fmt.Sprintf(n.conf.Translate.NotifyDirectMessage, chm.UserID, channel.ChannelID, channel.ChannelName))
+		directMessage := n.Localizer.MustLocalize(&i18n.LocalizeConfig{
+			DefaultMessage: &i18n.Message{
+				ID:          "DirectMessage",
+				Description: "DM Warning message to those who did not submit standup",
+				Other:       "Hey, <@{{.user}}>! you failed to submit standup in <#{{.channelID}}|{{.channelName}}> on time! Do it ASAP!",
+			},
+			TemplateData: map[string]interface{}{
+				"user":        chm.UserID,
+				"channelID":   channel.ChannelID,
+				"channelName": channel.ChannelName,
+			},
+		})
+		err := n.s.SendUserMessage(chm.UserID, directMessage)
 		if err != nil {
 			logrus.Errorf("notifier: s.SendMessage failed: %v\n", err)
 		}
@@ -280,7 +349,17 @@ func (n *Notifier) SendIndividualNotification(channelMemberID int64) {
 	notify := func() error {
 		submittedStandup := n.db.SubmittedStandupToday(chm.UserID, chm.ChannelID)
 		if repeats < n.conf.ReminderRepeatsMax && !submittedStandup {
-			n.s.SendMessage(channel.ChannelID, fmt.Sprintf(n.conf.Translate.IndividualStandupersLate, chm.UserID), nil)
+			tagIndividualNonReporters := n.Localizer.MustLocalize(&i18n.LocalizeConfig{
+				DefaultMessage: &i18n.Message{
+					ID:          "TagIndividualNonReporters",
+					Description: "Display message about those who did not submit standup with individual schedules",
+					Other:       "Hey, {{.user}}! You failed to submit standup in time! Get it done ASAP!",
+				},
+				TemplateData: map[string]interface{}{
+					"user": chm.UserID,
+				},
+			})
+			n.s.SendMessage(channel.ChannelID, tagIndividualNonReporters, nil)
 			repeats++
 			err := errors.New("Continue backoff")
 			return err
