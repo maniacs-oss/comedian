@@ -59,7 +59,6 @@ func (s *Slack) Run() {
 
 	s.WG.Add(1)
 	go s.RTM.ManageConnection()
-	s.WG.Done()
 
 	for msg := range s.RTM.IncomingEvents {
 		switch ev := msg.Data.(type) {
@@ -72,6 +71,9 @@ func (s *Slack) Run() {
 			return
 		}
 	}
+
+	s.WG.Done()
+
 }
 
 func (s *Slack) handleJoin(channelID string) {
